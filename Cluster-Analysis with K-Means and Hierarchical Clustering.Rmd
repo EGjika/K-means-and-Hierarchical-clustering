@@ -1,0 +1,351 @@
+---
+title: "Cluster Analysis"
+author: "Eralda Gjika"
+date: "December 2024"
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+subtitle: "K-means and Hierarchical Clustering"
+---
+
+
+# Clustering techniques
+
+Reference Shiny App: https://shareknowledge2learn.shinyapps.io/Kmean_Clusters/
+
+Libraries used are:
+```{r}
+library(tidyverse)  # data manipulation
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+```
+
+Below we are going to work with three main dataset in R each of them has a different nature. 
+
+### Distance matrix 
+We use get_dist(name_of_dataframe) to obtain the distance matrix which we are using as an argument for fviz)dist() to vizualize the distance of the observations. Here "gradient" is a vector of colors used for the display of the three main levels low-mid-high.
+```{r}
+library(datasets)
+datasets::state.x77
+head(state.x77,10)
+
+distance <- get_dist(state.x77)
+distance
+fviz_dist(distance, gradient = list(low = "green", mid = "white", high = "red"))
+```
+
+```{r}
+fviz_dist(distance, gradient = list(low = "blue", mid = "white", high = "red"))
+
+```
+
+
+```{r}
+library(rattle)# import wine dataset
+data(wine, package='rattle')
+head(wine)
+distance <- get_dist(wine)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+```{r}
+head(USArrests)
+USArrests<- na.omit(USArrests)
+distance <- get_dist(USArrests)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+
+# K Means 
+We can compute k-means in R with the **kmeans** function. Here will group the data into two clusters (centers = 2). The kmeans function also has an **nstart** option that attempts multiple initial configurations and reports on the best one. For example, adding nstart = 25 will generate 25 initial configurations. This approach is often recommended.
+
+```{r}
+k2.usa <- kmeans(USArrests, centers = 3, nstart = 25)
+k2.usa
+str(k2.usa)
+```
+
+```{r}
+k2.state <- kmeans(state.x77, centers = 4, nstart = 25)
+k2.state
+str(k2.state)
+```
+We can also view our results by using **fviz_cluster**. This provides a nice illustration of the clusters. **If there are more than two dimensions (variables) fviz_cluster will perform principal component analysis (PCA)** and plot the data points according to the first two principal components that explain the majority of the variance.
+
+```{r}
+library(factoextra)
+fviz_cluster(k2.state, data = state.x77)
+fviz_cluster(k2.usa, data = USArrests)
+```
+Because the number of clusters (k) must be set before we start the algorithm, it is often advantageous to use several different values of k and examine the differences in the results. We can execute the same process for 3, 4, and 5 clusters, and the results are shown in the figure
+```{r}
+k2.usa <- kmeans(USArrests, centers = 2, nstart = 25)
+k3.usa <- kmeans(USArrests, centers = 3, nstart = 25)
+k4.usa <- kmeans(USArrests, centers = 4, nstart = 25)
+k5.usa <- kmeans(USArrests, centers = 5, nstart = 25)
+USArrests<-na.omit(USArrests)
+# plots to compare
+p1 <- fviz_cluster(k2.usa, geom = "point", data = USArrests) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3.usa, geom = "point",  data = USArrests) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4.usa, geom = "point",  data = USArrests) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5.usa, geom = "point",  data =USArrests) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
+
+For the state.x77 dataset
+```{r}
+k3.state <- kmeans(state.x77, centers = 3, nstart = 25)
+k4.state <- kmeans(state.x77, centers = 4, nstart = 25)
+k5.state <- kmeans(state.x77, centers = 5, nstart = 25)
+# plots to compare
+p1 <- fviz_cluster(k2.state, geom = "point", data = state.x77) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3.state, geom = "point",  data = state.x77) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4.state, geom = "point",  data = state.x77) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5.state, geom = "point",  data =state.x77) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
+## Determine the number of clusters
+```{r}
+set.seed(123)
+fviz_nbclust(USArrests, kmeans, method = "wss")
+```
+
+```{r}
+set.seed(123)
+
+fviz_nbclust(state.x77, kmeans, method = "wss")
+```
+## Silouhete method
+In short, the average silhouette approach measures the quality of a clustering. That is, it determines how well each object lies within its cluster. A high average silhouette width indicates a good clustering.
+```{r}
+fviz_nbclust(USArrests, kmeans, method = "silhouette")
+fviz_nbclust(state.x77, kmeans, method = "silhouette")
+```
+
+### Gap Statistic Method
+
+USArrests dataset
+```{r}
+# compute gap statistic
+set.seed(123)
+gap_stat <- clusGap(USArrests, FUN = kmeans, nstart = 25, K.max = 10, B = 50)
+# Print the result
+print(gap_stat, method = "firstmax")
+fviz_gap_stat(gap_stat)
+
+# compute gap statistic
+set.seed(123)
+gap_stat.1 <- clusGap(state.x77, FUN = kmeans, nstart = 25, K.max = 10, B = 50)
+# Print the result
+print(gap_stat.1, method = "firstmax")
+fviz_gap_stat(gap_stat.1)
+```
+
+
+At the end after analyzing the optimal number of clusters we contsruct the cluster and print the results.
+
+```{r}
+# Compute k-means clustering with k = 6
+set.seed(123)
+final.clust <- kmeans(USArrests, 6, nstart = 25)
+print(final.clust)
+fviz_cluster(final.clust, data = USArrests)
+```
+
+# Hierrarchial clustering 
+```{r}
+library(tidyverse)  # data manipulation
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering visualization
+library(dendextend) # for comparing two dendrograms
+```
+
+USArrest hierarchial clustering-Dendogram
+```{r}
+# Dissimilarity matrix
+d <- dist(USArrests, method = "euclidean")
+
+# Hierarchical clustering using Complete Linkage
+hc1 <- hclust(d, method = "complete" )
+
+# Plot the obtained dendrogram
+plot(hc1, cex = 0.6, hang = -1)
+```
+
+```{r}
+# Dissimilarity matrix
+d <- dist(state.x77, method = "euclidean")
+
+# Hierarchical clustering using Complete Linkage
+hc1 <- hclust(d, method = "complete" )
+
+# Plot the obtained dendrogram
+plot(hc1, cex = 0.6, hang = -1)
+```
+### Agglometarive -AGNES
+Alternatively, we can use the agnes function. These functions behave very similarly; however, with the agnes function you can also get the agglomerative coefficient, which measures the amount of clustering structure found (values closer to 1 suggest strong clustering structure).
+```{r}
+# Compute with agnes
+hc2 <- agnes(USArrests, method = "complete")
+
+# Agglomerative coefficient
+hc2$ac
+```
+
+```{r}
+# Compute with agnes
+hc2 <- agnes(state.x77, method = "complete")
+
+# Agglomerative coefficient
+hc2$ac
+
+```
+### Divisive Hierarchical Clustering - DIANA
+The R function diana provided by the cluster package allows us to perform divisive hierarchical clustering. DIANA works similar to AGNES; however, there is no method to provide.
+
+```{r}
+# compute divisive hierarchical clustering
+hc4 <- diana(USArrests)
+
+# Divise coefficient; amount of clustering structure found
+hc4$dc
+## [1] 0.8514345
+
+# plot dendogram
+pltree(hc4, cex = 0.6, hang = -1, main = "Dendogram of diana")
+```
+
+The height of the fusion, provided on the vertical axis, indicates the (dis)similarity between two observations. The higher the height of the fusion, the less similar the observations are. Note that, conclusions about the proximity of two observations can be drawn only based on the height where branches containing those two observations first are fused. We cannot use the proximity of two observations along the horizontal axis as a criteria of their similarity.
+
+The height of the cut to the dendogram controls the number of clusters obtained. It plays the same role as the k in k-means clustering. In order to identify sub-groups (i.e. clusters), we can cut the dendrogram with cutree:
+
+```{r}
+d <- dist(USArrests, method = "euclidean")
+
+# Ward's method
+hc5 <- hclust(d, method = "ward.D2" )
+
+# Cut tree into 4 groups
+sub_grp <- cutree(hc5, k = 4)
+
+# Number of members in each cluster
+table(sub_grp)
+```
+It’s also possible to draw the dendrogram with a border around the 4 clusters. The argument border is used to specify the border colors for the rectangles:
+
+```{r}
+plot(hc5, cex = 0.6)
+rect.hclust(hc5, k = 5, border = 2:5)
+```
+
+# Heatmaps 
+```{r}
+library(pheatmap)
+heatmap(as.matrix(USArrests))
+```
+
+
+
+# Bioconductor 
+There are many packages used from Bioconductor in R. The code below enables the activation of these packages in R and use them. (just use it once when installing the library)
+Reference: https://www.bioconductor.org/
+
+```{r}
+# if (!require("BiocManager", quietly = TRUE))
+#  install.packages("BiocManager")
+# 
+#  BiocManager::install("ComplexHeatmap")
+```
+
+```{r}
+library(ComplexHeatmap)
+Heatmap(as.matrix(USArrests),row_split = ,cluster_columns = ,border=T,heatmap_legend_param = list(title = ""), cluster_row_slices = F)
+```
+
+# root clusters
+We will use hc5 (the cluster created above form the dendogram). Let's start with 5 and we may observe how many cluster are significant. 
+```{r}
+library(ape)
+# Unrooted
+colors = c("red", "blue", "green","yellow","orange")
+clus5 = cutree(hc5, 5)
+plot(as.phylo(hc5), type = "unrooted",  tip.color = colors[clus5],cex = 1, no.margin = TRUE)
+```
+```{r}
+# Cut the dendrogram into 3 clusters
+colors = c("red", "blue", "green","yellow","orange")
+clus5 = cutree(hc5, 5)
+plot(as.phylo(hc5), type = "fan", tip.color = colors[clus5],    label.offset = 1, cex = 0.7)
+```
+# Heatmap in Plotly
+reference: https://plotly.com/r/heatmaps/
+```{r}
+library(plotly)
+fig <- plot_ly(z = as.matrix(USArrests), type = "heatmap")
+
+fig
+```
+
+
+# APPENDIX 1
+
+Lastly, we can also compare two dendograms. Here we compare hierarchical clustering with complete linkage versus Ward’s method. The function tanglegram plots two dendrograms, side by side, with their labels connected by lines.
+```{r}
+library(dendextend)
+# Compute distance matrix
+res.dist <- dist(USArrests, method = "euclidean")
+
+# Compute 2 hierarchical clusterings
+hc1 <- hclust(res.dist, method = "complete")
+hc2 <- hclust(res.dist, method = "ward.D2")
+
+# Create two dendograms
+dend1 <- as.dendrogram (hc1)
+dend2 <- as.dendrogram (hc2)
+
+tanglegram(dend1, dend2)
+```
+
+The output displays “unique” nodes, with a combination of labels/items not present in the other tree, highlighted with dashed lines. The quality of the alignment of the two trees can be measured using the function entanglement. Entanglement is a measure between 1 (full entanglement) and 0 (no entanglement). A lower entanglement coefficient corresponds to a good alignment. The output of tanglegram can be customized using many other options as follow:
+
+```{r}
+dend_list <- dendlist(dend1, dend2)
+
+tanglegram(dend1, dend2,
+  highlight_distinct_edges = FALSE, # Turn-off dashed lines
+  common_subtrees_color_lines = FALSE, # Turn-off line colors
+  common_subtrees_color_branches = TRUE, # Color common branches 
+  main = paste("entanglement =", round(entanglement(dend_list), 2))
+  )
+```
+
+
+
+# Reference
+https://afit-r.github.io/kmeans_clustering
+
+https://rstudio-pubs-static.s3.amazonaws.com/515710_c0433490253f45c281f74b286c455419.html
+
+https://cran.r-project.org/web/packages/kernlab/kernlab.pdf
+
+https://www.rdocumentation.org/packages/kernlab/versions/0.9-29/topics/ksvm
+
+https://www.datacamp.com/community/tutorials/support-vector-machines-r
+
+https://rviews.rstudio.com/2019/03/01/some-r-packages-for-roc-curves/
+
+https://uc-r.github.io/kmeans_clustering
+
+https://uc-r.github.io/hc_clustering
+
+PCA-Principal Component Analysis in R ,for more information please see also: https://uc-r.github.io/pca
+
+
+# Reference
+https://www.youtube.com/c/joshstarmer/search?query=Cluster%20analysis
+
